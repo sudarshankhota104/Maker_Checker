@@ -18,64 +18,60 @@ pipeline {
         JAVA_HOME = 'C:\\Program Files\\Java\\jdk-17.0.2'
         MAVEN_HOME = 'D:\\Softwarepath\\apache-maven-3.8.5'
 
-
         // ============================================================
         // PROJECT
         // ============================================================
 
-        // pom.xml is directly in Jenkins workspace
         PROJECT_DIR = '.'
 
+        // Actual artifact from pom.xml
         APP_JAR = 'target\\maker-checker-banking-0.0.1-SNAPSHOT.jar'
-
 
         // ============================================================
         // BACKEND
         // ============================================================
 
         BACKEND_PORT = '8000'
+
+        // Spring Boot application runs on port 8000
         BACKEND_URL = 'http://localhost:8000'
 
-
         // ============================================================
-        // APPZILLON WAR FILES
+        // FRONTEND WAR
+        //
+        // IMPORTANT:
+        // This WAR is NOT taken from Git.
+        // Jenkins will use the WAR already present
+        // on the local Windows machine.
         // ============================================================
 
-        // These WAR files already exist on the Jenkins machine.
-        // They are NOT taken from Git.
+        APPZILLON_SERVER_WAR = 'C:\\deploy\\maker-checker-frontend\\AppzillonServer.war'
+        CHECKER_MAKER_WAR = 'C:\\deploy\\maker-checker-frontend\\Checker_Maker.war'
 
-        APPZILLON_SERVER_WAR =
-            'C:\\deploy\\maker-checker-frontend\\AppzillonServer.war'
-
-        CHECKER_MAKER_WAR =
-            'C:\\deploy\\maker-checker-frontend\\Checker_Maker.war'
-
+        // Context names used when copying WARs into Tomcat webapps
+        APPZILLON_CONTEXT = 'AppzillonServer'
+        CHECKER_MAKER_CONTEXT = 'Checker_Maker'
 
         // ============================================================
         // TOMCAT
         // ============================================================
 
-        TOMCAT_HOME =
-            'D:\\Softwarepath\\apache-tomcat-9.0.53'
-
+        TOMCAT_HOME = 'D:\\Softwarepath\\apache-tomcat-9.0.53'
         TOMCAT_PORT = '8080'
 
-
         // ============================================================
-        // APPLICATION URL
+        // FRONTEND
         // ============================================================
 
-        FRONTEND_URL =
-            'http://localhost:8080/Checker_Maker/'
-
+        FRONTEND_URL = 'http://localhost:8080/Checker_Maker/'
 
         // ============================================================
         // PLAYWRIGHT
+        //
+        // Change this if your Playwright project is elsewhere.
         // ============================================================
 
-        // Change this if your Playwright Maven project is elsewhere.
-        //
-        // PLAYWRIGHT_DIR = 'D:\\playwright-maker-checker'
+       // PLAYWRIGHT_DIR = 'D:\\playwright-maker-checker'
     }
 
 
@@ -99,7 +95,6 @@ pipeline {
                 bat '''
                     @echo off
 
-                    echo.
                     echo Current workspace:
                     cd
 
@@ -133,30 +128,24 @@ pipeline {
                     set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%MAVEN_HOME%\\bin;%PATH%"
 
-
                     echo.
                     echo JAVA_HOME:
                     echo %JAVA_HOME%
-
 
                     echo.
                     echo MAVEN_HOME:
                     echo %MAVEN_HOME%
 
-
                     echo.
                     echo JAVA VERSION:
                     java -version
-
 
                     echo.
                     echo MAVEN VERSION:
                     mvn -version
 
-
                     echo.
                     echo Checking project...
-
 
                     if not exist "%WORKSPACE%\\%PROJECT_DIR%\\pom.xml" (
 
@@ -169,7 +158,6 @@ pipeline {
 
                         exit /b 1
                     )
-
 
                     echo.
                     echo pom.xml found successfully.
@@ -198,18 +186,14 @@ pipeline {
 
                     cd /d "%WORKSPACE%\\%PROJECT_DIR%"
 
-
                     echo.
                     echo Current directory:
                     cd
 
-
                     echo.
                     echo Starting Maven build...
 
-
                     mvn clean package -DskipTests
-
 
                     if errorlevel 1 (
 
@@ -221,12 +205,10 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo.
                     echo ==========================================
                     echo MAVEN BUILD SUCCESSFUL
                     echo ==========================================
-
 
                     echo.
                     echo Target directory:
@@ -238,7 +220,7 @@ pipeline {
 
 
         // ============================================================
-        // 4. VERIFY BACKEND JAR
+        // 4. VERIFY JAR
         // ============================================================
 
         stage('Verify Backend JAR') {
@@ -254,10 +236,8 @@ pipeline {
 
                     cd /d "%WORKSPACE%\\%PROJECT_DIR%"
 
-
                     echo Expected JAR:
                     echo %APP_JAR%
-
 
                     if not exist "%APP_JAR%" (
 
@@ -274,12 +254,10 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo.
                     echo ==========================================
                     echo BACKEND JAR FOUND
                     echo ==========================================
-
 
                     dir "%APP_JAR%"
                 '''
@@ -288,43 +266,67 @@ pipeline {
 
 
         // ============================================================
-        // 5. VERIFY BOTH APPZILLON WAR FILES
+        // 5. VERIFY FRONTEND WAR
         // ============================================================
 
-       stage('Verify Appzillon WAR Files') {
+        stage('Verify Appzillon WAR Files') {
 
-    steps {
+            steps {
 
-        echo '=========================================='
-        echo 'VERIFYING APPZILLON WAR FILES'
-        echo '=========================================='
+                echo '=========================================='
+                echo 'VERIFYING LOCAL APPZILLON WAR FILES'
+                echo '=========================================='
 
-        bat '''
-            @echo off
+                bat '''
+                    @echo off
 
-            echo.
-            echo Checking AppzillonServer.war...
-            echo %APPZILLON_SERVER_WAR%
+                    echo AppzillonServer.war:
+                    echo %APPZILLON_SERVER_WAR%
 
-            if not exist "%APPZILLON_SERVER_WAR%" exit /b 1
+                    if not exist "%APPZILLON_SERVER_WAR%" (
 
-            echo AppzillonServer.war FOUND
+                        echo.
+                        echo ==========================================
+                        echo ERROR: APPZILLON SERVER WAR NOT FOUND
+                        echo ==========================================
 
-            echo.
-            echo Checking Checker_Maker.war...
-            echo %CHECKER_MAKER_WAR%
+                        echo.
+                        echo Jenkins is expecting the WAR at:
 
-            if not exist "%CHECKER_MAKER_WAR%" exit /b 1
+                        echo %APPZILLON_SERVER_WAR%
 
-            echo Checker_Maker.war FOUND
+                        echo.
+                        echo Please make sure the WAR exists
+                        echo on the Jenkins machine.
 
-            echo.
-            echo ==========================================
-            echo BOTH WAR FILES FOUND SUCCESSFULLY
-            echo ==========================================
-        '''
-    }
-}
+                        exit /b 1
+                    )
+
+                    echo.
+                    echo ==========================================
+                    echo FRONTEND WAR FOUND
+                    echo ==========================================
+
+                    dir "%APPZILLON_SERVER_WAR%"
+
+                    echo.
+                    echo Checker_Maker.war:
+                    echo %CHECKER_MAKER_WAR%
+
+                    if not exist "%CHECKER_MAKER_WAR%" (
+
+                        echo ERROR: CHECKER MAKER WAR NOT FOUND
+
+                        echo Jenkins is expecting the WAR at:
+                        echo %CHECKER_MAKER_WAR%
+
+                        exit /b 1
+                    )
+
+                    dir "%CHECKER_MAKER_WAR%"
+                '''
+            }
+        }
 
 
         // ============================================================
@@ -339,12 +341,10 @@ pipeline {
                 echo 'STOPPING EXISTING BACKEND'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
 
                     echo Checking port %BACKEND_PORT%...
-
 
                     for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
 
@@ -353,10 +353,8 @@ pipeline {
                         taskkill /F /PID %%a >nul 2>&1
                     )
 
-
                     echo.
                     echo Backend stop completed.
-
 
                     ping 127.0.0.1 -n 3 >nul
                 '''
@@ -368,47 +366,71 @@ pipeline {
         // 7. START BACKEND
         // ============================================================
 
-stage('Start Backend') {
-    steps {
-        echo '=========================================='
-        echo 'STARTING MAKER-CHECKER BACKEND'
-        echo '=========================================='
+        stage('Start Backend') {
 
-        bat '''
-            @echo off
+            steps {
 
-            if not exist "C:\\deploy\\maker-checker\\deploy.bat" (
-                echo ERROR: deploy.bat not found
-                exit /b 1
-            )
+                echo '=========================================='
+                echo 'STARTING MAKER-CHECKER BACKEND'
+                echo '=========================================='
 
-            call "C:\\deploy\\maker-checker\\deploy.bat"
+                bat '''
+                    @echo off
 
-            echo.
-            echo Waiting for backend to start...
-            timeout /t 20 /nobreak >nul
+                    set "JAVA_HOME=%JAVA_HOME%"
+                    set "PATH=%JAVA_HOME%\\bin;%PATH%"
 
-            echo.
-            echo Checking port 8000...
+                    cd /d "%WORKSPACE%\\%PROJECT_DIR%"
 
-            netstat -ano | findstr ":8000"
+                    echo.
+                    echo Starting:
 
-            if errorlevel 1 (
-                echo.
-                echo ERROR: Backend is not listening on port 8000
-                echo.
-                echo Check:
-                echo C:\\deploy\\maker-checker\\application.log
-                exit /b 1
-            )
+                    echo java -jar %APP_JAR%
 
-            echo.
-            echo ==========================================
-            echo BACKEND IS RUNNING ON PORT 8000
-            echo ==========================================
-        '''
-    }
-}
+                    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+                        "$env:JENKINS_NODE_COOKIE = 'dontKillMe'; ^
+                         $env:JENKINS_SERVER_COOKIE = 'dontKillMe'; ^
+                         $java = Join-Path $env:JAVA_HOME 'bin\\java.exe'; ^
+                         $process = Start-Process -FilePath $java -ArgumentList @('-jar','%APP_JAR%') -WorkingDirectory '%WORKSPACE%\\%PROJECT_DIR%' -RedirectStandardOutput '%WORKSPACE%\\%PROJECT_DIR%\\backend.log' -RedirectStandardError '%WORKSPACE%\\%PROJECT_DIR%\\backend-error.log' -WindowStyle Hidden -PassThru; ^
+                         if ($process.HasExited) { exit $process.ExitCode }"
+
+                    echo.
+                    if errorlevel 1 (
+                        echo Backend process could not be started.
+                        exit /b 1
+                    )
+
+                    echo Backend startup command executed.
+
+                    echo.
+                    echo Waiting for backend to initialize...
+
+                    ping 127.0.0.1 -n 8 >nul
+
+                    echo.
+                    echo ==========================================
+                    echo BACKEND LOG
+                    echo ==========================================
+
+                    if exist backend.log (
+
+                        powershell -Command "Get-Content backend.log -Tail 50"
+
+                    ) else (
+
+                        echo backend.log not found
+                    )
+
+                    if exist backend-error.log (
+                        echo.
+                        echo Backend error log:
+                        type backend-error.log
+                    )
+                '''
+            }
+        }
+
+
         // ============================================================
         // 8. BACKEND HEALTH CHECK
         // ============================================================
@@ -421,23 +443,18 @@ stage('Start Backend') {
                 echo 'BACKEND HEALTH CHECK'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
 
                     set RETRIES=20
 
-
                     :CHECK_BACKEND
-
 
                     echo.
                     echo Checking backend port %BACKEND_PORT%...
                     echo Attempts remaining: %RETRIES%
 
-
                     netstat -ano | findstr :%BACKEND_PORT% | findstr LISTENING >nul
-
 
                     if not errorlevel 1 (
 
@@ -451,11 +468,9 @@ stage('Start Backend') {
                         echo %BACKEND_URL%
 
                         exit /b 0
-                    }
-
+                    )
 
                     set /a RETRIES-=1
-
 
                     if %RETRIES% LEQ 0 (
 
@@ -469,10 +484,8 @@ stage('Start Backend') {
 
                         netstat -ano | findstr :%BACKEND_PORT%
 
-
                         echo.
                         echo Backend log:
-
 
                         if exist "%WORKSPACE%\\%PROJECT_DIR%\\backend.log" (
 
@@ -483,10 +496,8 @@ stage('Start Backend') {
                             echo backend.log not found
                         )
 
-
                         exit /b 1
-                    }
-
+                    )
 
                     echo Backend not ready.
 
@@ -510,10 +521,8 @@ stage('Start Backend') {
                 echo 'STOPPING TOMCAT'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
-
 
                     if not exist "%TOMCAT_HOME%\\bin\\shutdown.bat" (
 
@@ -523,36 +532,28 @@ stage('Start Backend') {
                         echo %TOMCAT_HOME%
 
                         exit /b 1
-                    }
-
+                    )
 
                     echo Calling Tomcat shutdown...
 
-
                     call "%TOMCAT_HOME%\\bin\\shutdown.bat"
-
 
                     echo.
                     echo Waiting for Tomcat to stop...
 
-
                     ping 127.0.0.1 -n 6 >nul
-
 
                     echo.
                     echo Checking remaining Tomcat process...
-
 
                     for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%TOMCAT_PORT% ^| findstr LISTENING') do (
 
                         echo Killing remaining Tomcat PID %%a
 
                         taskkill /F /PID %%a >nul 2>&1
-                    }
-
+                    )
 
                     ping 127.0.0.1 -n 3 >nul
-
 
                     echo.
                     echo Tomcat stopped.
@@ -562,7 +563,7 @@ stage('Start Backend') {
 
 
         // ============================================================
-        // 10. DEPLOY BOTH APPZILLON WAR FILES
+        // 10. DEPLOY FRONTEND WAR
         // ============================================================
 
         stage('Deploy Appzillon WAR Files') {
@@ -570,12 +571,22 @@ stage('Start Backend') {
             steps {
 
                 echo '=========================================='
-                echo 'DEPLOYING APPZILLON WAR FILES'
+                echo 'DEPLOYING APPZILLON WAR FILES TO TOMCAT'
                 echo '=========================================='
-
 
                 bat '''
                     @echo off
+
+                    echo.
+                    echo Tomcat:
+                    echo %TOMCAT_HOME%
+
+                    echo.
+                    echo AppzillonServer.war:
+                    echo %APPZILLON_SERVER_WAR%
+
+                    echo Checker_Maker.war:
+                    echo %CHECKER_MAKER_WAR%
 
 
                     if not exist "%TOMCAT_HOME%\\webapps" (
@@ -583,107 +594,54 @@ stage('Start Backend') {
                         echo ERROR:
                         echo Tomcat webapps directory not found.
 
-                        echo %TOMCAT_HOME%\\webapps
-
                         exit /b 1
-                    }
+                    )
 
 
                     echo.
                     echo ==========================================
-                    echo REMOVING OLD APPZILLON SERVER
+                    echo REMOVING OLD FRONTEND
                     echo ==========================================
 
-
-                    rmdir /S /Q ^
-                        "%TOMCAT_HOME%\\webapps\\AppzillonServer" ^
-                        >nul 2>&1
-
-
-                    del /F /Q ^
-                        "%TOMCAT_HOME%\\webapps\\AppzillonServer.war" ^
-                        >nul 2>&1
+                    for %%C in ("%APPZILLON_CONTEXT%" "%CHECKER_MAKER_CONTEXT%") do (
+                        rmdir /S /Q "%TOMCAT_HOME%\\webapps\\%%~C" >nul 2>&1
+                        del /F /Q "%TOMCAT_HOME%\\webapps\\%%~C.war" >nul 2>&1
+                    )
 
 
                     echo.
                     echo ==========================================
-                    echo REMOVING OLD CHECKER MAKER
+                    echo COPYING FRONTEND WAR
                     echo ==========================================
 
-
-                    rmdir /S /Q ^
-                        "%TOMCAT_HOME%\\webapps\\Checker_Maker" ^
-                        >nul 2>&1
-
-
-                    del /F /Q ^
-                        "%TOMCAT_HOME%\\webapps\\Checker_Maker.war" ^
-                        >nul 2>&1
-
-
-                    echo.
-                    echo ==========================================
-                    echo COPYING APPZILLON SERVER WAR
-                    echo ==========================================
-
-
-                    copy /Y ^
-                        "%APPZILLON_SERVER_WAR%" ^
-                        "%TOMCAT_HOME%\\webapps\\AppzillonServer.war"
-
+                    copy /Y "%APPZILLON_SERVER_WAR%" "%TOMCAT_HOME%\\webapps\\%APPZILLON_CONTEXT%.war"
 
                     if errorlevel 1 (
-
-                        echo.
-                        echo ==========================================
                         echo APPZILLON SERVER WAR COPY FAILED
-                        echo ==========================================
-
                         exit /b 1
-                    }
+                    )
 
-
-                    echo.
-                    echo AppzillonServer.war copied successfully.
-
-
-                    echo.
-                    echo ==========================================
-                    echo COPYING CHECKER MAKER WAR
-                    echo ==========================================
-
-
-                    copy /Y ^
-                        "%CHECKER_MAKER_WAR%" ^
-                        "%TOMCAT_HOME%\\webapps\\Checker_Maker.war"
+                    copy /Y "%CHECKER_MAKER_WAR%" "%TOMCAT_HOME%\\webapps\\%CHECKER_MAKER_CONTEXT%.war"
 
 
                     if errorlevel 1 (
 
                         echo.
                         echo ==========================================
-                        echo CHECKER MAKER WAR COPY FAILED
+                        echo FRONTEND WAR COPY FAILED
                         echo ==========================================
 
                         exit /b 1
-                    }
-
-
-                    echo.
-                    echo Checker_Maker.war copied successfully.
+                    )
 
 
                     echo.
                     echo ==========================================
-                    echo BOTH WAR FILES DEPLOYED
+                    echo FRONTEND WAR DEPLOYED
                     echo ==========================================
 
-
-                    echo.
-                    echo Tomcat webapps WAR files:
-
-
-                    dir "%TOMCAT_HOME%\\webapps\\*.war"
+                    dir "%TOMCAT_HOME%\\webapps\\%APPZILLON_CONTEXT%.war"
+                    dir "%TOMCAT_HOME%\\webapps\\%CHECKER_MAKER_CONTEXT%.war"
                 '''
             }
         }
@@ -701,7 +659,6 @@ stage('Start Backend') {
                 echo 'STARTING TOMCAT'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
 
@@ -709,34 +666,25 @@ stage('Start Backend') {
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
 
                     set "CATALINA_HOME=%TOMCAT_HOME%"
-
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
-
-                    echo.
                     echo JAVA_HOME:
                     echo %JAVA_HOME%
-
 
                     echo.
                     echo CATALINA_HOME:
                     echo %CATALINA_HOME%
 
-
                     echo.
                     echo Starting Tomcat...
 
-
                     call "%TOMCAT_HOME%\\bin\\catalina.bat" start
-
 
                     echo.
                     echo Tomcat start command executed.
 
-
                     echo.
                     echo Waiting for Tomcat...
-
 
                     ping 127.0.0.1 -n 15 >nul
 
@@ -746,9 +694,7 @@ stage('Start Backend') {
                     echo TOMCAT PORT CHECK
                     echo ==========================================
 
-
                     netstat -ano | findstr :%TOMCAT_PORT% | findstr LISTENING
-
 
                     if errorlevel 1 (
 
@@ -757,8 +703,7 @@ stage('Start Backend') {
                         echo Tomcat is not listening on port %TOMCAT_PORT%.
 
                         exit /b 1
-                    }
-
+                    )
 
                     echo.
                     echo Tomcat is running successfully.
@@ -779,34 +724,27 @@ stage('Start Backend') {
                 echo 'FRONTEND HEALTH CHECK'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
-
 
                     echo Frontend URL:
                     echo %FRONTEND_URL%
 
-
                     set RETRIES=30
 
-
                     :CHECK_FRONTEND
-
 
                     echo.
                     echo Checking frontend...
                     echo Attempts remaining: %RETRIES%
 
-
                     curl -s -o nul -w "%%{http_code}" "%FRONTEND_URL%" | findstr "200 302"
-
 
                     if not errorlevel 1 (
 
                         echo.
                         echo ==========================================
-                        echo CHECKER MAKER FRONTEND IS RUNNING
+                        echo FRONTEND IS RUNNING
                         echo ==========================================
 
                         echo.
@@ -814,11 +752,9 @@ stage('Start Backend') {
                         echo %FRONTEND_URL%
 
                         exit /b 0
-                    }
-
+                    )
 
                     set /a RETRIES-=1
-
 
                     if %RETRIES% LEQ 0 (
 
@@ -827,28 +763,23 @@ stage('Start Backend') {
                         echo FRONTEND HEALTH CHECK FAILED
                         echo ==========================================
 
-
                         echo.
                         echo Tomcat port:
 
                         netstat -ano | findstr :%TOMCAT_PORT%
-
 
                         echo.
                         echo Tomcat webapps:
 
                         dir "%TOMCAT_HOME%\\webapps"
 
-
                         echo.
                         echo Tomcat logs:
 
                         dir "%TOMCAT_HOME%\\logs"
 
-
                         exit /b 1
-                    }
-
+                    )
 
                     echo Frontend not ready.
 
@@ -872,10 +803,8 @@ stage('Start Backend') {
                 echo 'RUNNING PLAYWRIGHT TESTS'
                 echo '=========================================='
 
-
                 bat '''
                     @echo off
-
 
                     if not exist "%PLAYWRIGHT_DIR%\\pom.xml" (
 
@@ -883,43 +812,34 @@ stage('Start Backend') {
                         echo WARNING:
                         echo Playwright Maven project not found.
 
-
                         echo.
                         echo Expected:
-
                         echo %PLAYWRIGHT_DIR%\\pom.xml
-
 
                         echo.
                         echo Skipping Playwright tests.
 
                         exit /b 0
-                    }
+                    )
 
 
                     cd /d "%PLAYWRIGHT_DIR%"
 
-
                     set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%MAVEN_HOME%\\bin;%PATH%"
-
 
                     echo.
                     echo Playwright project:
                     echo %PLAYWRIGHT_DIR%
 
-
                     echo.
                     echo Frontend:
                     echo %FRONTEND_URL%
 
-
                     echo.
                     echo Running Playwright...
 
-
                     mvn test
-
 
                     set PW_EXIT=%errorlevel%
 
@@ -932,7 +852,7 @@ stage('Start Backend') {
                         echo ==========================================
 
                         exit /b %PW_EXIT%
-                    }
+                    )
 
 
                     echo.
@@ -957,10 +877,8 @@ stage('Start Backend') {
             echo 'MAKER-CHECKER PIPELINE SUCCESSFUL'
             echo '=========================================='
 
-
             echo "Backend: ${BACKEND_URL}"
             echo "Frontend: ${FRONTEND_URL}"
-
 
             echo '=========================================='
         }
@@ -972,10 +890,8 @@ stage('Start Backend') {
             echo 'MAKER-CHECKER PIPELINE FAILED'
             echo '=========================================='
 
-
             echo "Backend log: ${WORKSPACE}\\${PROJECT_DIR}\\backend.log"
             echo "Tomcat logs: ${TOMCAT_HOME}\\logs\\"
-
 
             echo '=========================================='
         }
